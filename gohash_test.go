@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vladmiller/gohash"
 )
 
@@ -25,7 +26,7 @@ func TestFrom(t *testing.T) {
 	if file, err := os.ReadFile("snapshot.txt"); err == nil {
 		snapshotExists = true
 		if err := json.Unmarshal(file, &snapshot); err != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}
 
@@ -34,7 +35,7 @@ func TestFrom(t *testing.T) {
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
 			hash, err := gohash.From(tc, sha256.New())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			if !snapshotExists {
 				snapshot[i] = hex.EncodeToString(hash)
@@ -47,9 +48,11 @@ func TestFrom(t *testing.T) {
 
 	// If snapshot did not exist before, then write it as json
 	if !snapshotExists {
-		b, _ := json.MarshalIndent(snapshot, "", "  ")
-		err := os.WriteFile("snapshot.txt", b, 0644)
-		assert.NoError(t, err)
+		b, err := json.MarshalIndent(snapshot, "", "  ")
+		require.NoError(t, err)
+
+		err = os.WriteFile("snapshot.txt", b, 0600)
+		require.NoError(t, err)
 
 		t.Error("Snapshot has been created, run the test again.")
 	}
@@ -61,10 +64,10 @@ func TestFrom_Pointers(t *testing.T) {
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("pointer test %d", i), func(t *testing.T) {
 			expected, err := gohash.From(tc, sha256.New())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			actual, err := gohash.From(&tc, sha256.New())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
 		})
@@ -73,23 +76,22 @@ func TestFrom_Pointers(t *testing.T) {
 
 func TestFrom_EmptyMaps(t *testing.T) {
 	h1, err := gohash.From(map[int]string{}, sha256.New())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	h2, err := gohash.From(map[string]string{}, sha256.New())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEqual(t, h1, h2)
 }
 
-
 func TestFrom_EmptyPointers(t *testing.T) {
 	var v1 *int
 	h1, err := gohash.From(v1, sha256.New())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var v2 *string
 	h2, err := gohash.From(v2, sha256.New())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotEqual(t, h1, h2)
 }
@@ -103,10 +105,10 @@ func BenchmarkFrom(b *testing.B) {
 			b.ResetTimer()
 
 			for b.Loop() {
-				gohash.From(tc, hasher)
+				_, err := gohash.From(tc, hasher)
+				require.NoError(b, err)
 				hasher.Reset()
 			}
-
 		})
 	}
 }

@@ -1,3 +1,4 @@
+// Package gohash implements [From] method that can generate a unique hash for almost any Golang type.
 package gohash
 
 import (
@@ -10,10 +11,6 @@ import (
 
 type Hash []byte
 
-var (
-	typeStringer = []byte("stringer")
-)
-
 // hashObject recursively processes input and adds variables to [hash.Hash].
 //
 // Each value is annotated with a type, so false is not equal to 0.
@@ -22,7 +19,7 @@ var (
 // https://go.dev/ref/spec#Types
 func hashObject(input any, hasher hash.Hash, depth int) error {
 	if depth > 100 {
-		return fmt.Errorf("depth exceeded for type %T. Limit is 100.", input)
+		return fmt.Errorf("depth exceeded for type %T", input)
 	}
 
 	// Preallocate reflect
@@ -71,7 +68,7 @@ func hashObject(input any, hasher hash.Hash, depth int) error {
 	// If input implements stringer interface, then use it directly
 	if rv.IsValid() {
 		if s, ok := rv.Interface().(fmt.Stringer); ok {
-			hasher.Write(typeStringer)
+			hasher.Write([]byte("stringer"))
 			hasher.Write([]byte(s.String()))
 			return nil
 		}
@@ -82,7 +79,7 @@ func hashObject(input any, hasher hash.Hash, depth int) error {
 	// If we received a reflect.Invalid, then we're getting an empty pointer
 	case reflect.Invalid:
 		// We cannot infer type of nil, however, we need to treat nil and *nil as same values
-		if !(rt == nil || rt.Kind() == reflect.Interface) {
+		if rt != nil && rt.Kind() != reflect.Interface {
 			hasher.Write([]byte(rt.String()))
 		}
 
@@ -91,37 +88,49 @@ func hashObject(input any, hasher hash.Hash, depth int) error {
 	// Unsigned integers
 	case reflect.Uint, reflect.Uintptr, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		hasher.Write(vt[:1])
-		binary.Write(hasher, binary.LittleEndian, rv.Uint())
+		if err := binary.Write(hasher, binary.LittleEndian, rv.Uint()); err != nil {
+			return fmt.Errorf("writer: %w", err)
+		}
 		return nil
 
 	// Signed integers
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		hasher.Write(vt[:1])
-		binary.Write(hasher, binary.LittleEndian, rv.Int())
+		if err := binary.Write(hasher, binary.LittleEndian, rv.Int()); err != nil {
+			return fmt.Errorf("writer: %w", err)
+		}
 		return nil
 
 	// Floats
 	case reflect.Float32, reflect.Float64:
 		hasher.Write(vt[:1])
-		binary.Write(hasher, binary.LittleEndian, rv.Float())
+		if err := binary.Write(hasher, binary.LittleEndian, rv.Float()); err != nil {
+			return fmt.Errorf("writer: %w", err)
+		}
 		return nil
 
 	// Complex
 	case reflect.Complex64, reflect.Complex128:
 		hasher.Write(vt[:1])
-		binary.Write(hasher, binary.LittleEndian, rv.Complex())
+		if err := binary.Write(hasher, binary.LittleEndian, rv.Complex()); err != nil {
+			return fmt.Errorf("writer: %w", err)
+		}
 		return nil
 
 	// Boolean
 	case reflect.Bool:
 		hasher.Write(vt[:1])
-		binary.Write(hasher, binary.LittleEndian, rv.Bool())
+		if err := binary.Write(hasher, binary.LittleEndian, rv.Bool()); err != nil {
+			return fmt.Errorf("writer: %w", err)
+		}
 		return nil
 
 	// String
 	case reflect.String:
 		hasher.Write(vt[:1])
-		binary.Write(hasher, binary.LittleEndian, rv.String())
+		if err := binary.Write(hasher, binary.LittleEndian, []byte(rv.String())); err != nil {
+			return fmt.Errorf("writer: %w", err)
+		}
 		return nil
 
 	// Slice

@@ -19,7 +19,7 @@ interfaces, channels and functions.
 ## Installation
 
 ```bash
-go get github.com/vladmiller/gohasher
+go get github.com/vladmiller/gohash
 ```
 
 ## Usage

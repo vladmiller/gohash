@@ -1,0 +1,78 @@
+version: "2"
+
+linters:
+  default: none
+
+  enable:
+    # Checks for uncehcked errors
+    - errcheck
+    # Same as go vet, but part of the linter. We'll not be removing go vet from the audit
+    - govet
+    # Checks for variables that are assigned, but not used
+    - ineffassign
+    - staticcheck
+    - unused
+    - asciicheck
+    - bidichk
+    - contextcheck
+    - copyloopvar
+    - decorder
+    - dupword
+    # This one is cute: https://github.com/breml/errchkjson
+    # Can help avoid excessive code
+    - errchkjson
+    - errname
+    - exhaustruct
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - godot
+    - godox
+    - gosec
+    - iface
+    - importas
+    - loggercheck
+    - misspell
+    - nestif
+    - nilerr
+    - nilnil
+    # Even through I like named returns, I have noticed quirky behaviour... so no.
+    - nonamedreturns
+    - prealloc
+    - predeclared
+    - spancheck
+    - tagalign
+    - testifylint
+    - testpackage
+    - thelper
+    - unconvert
+    # yes, please...
+    - wrapcheck
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+
+    # https://golangci-lint.run/usage/linters/#govet
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+
+    staticcheck:
+      # https://staticcheck.dev/docs/configuration/options/#dot_import_whitelist
+      dot-import-whitelist: []
+
+      checks:
+        - "all"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+run:
+  allow-parallel-runners: true

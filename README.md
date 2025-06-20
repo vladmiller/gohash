@@ -14,7 +14,8 @@ interfaces, channels and functions.
 * Consistent & strict hashing of any Golang variable including type information, s.t. hash of `0` is not equal to hash of `false`. 
 * Supports deeply nested maps and stuctures.
 * Support for all common types, except interfaces, functions and channels.
-* 
+* Handles Stringer interface
+* Supports cyclic-references
 
 ## Installation
 

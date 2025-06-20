@@ -3,6 +3,7 @@ module github.com/vladmiller/gohash
 go 1.24.3
 
 require (
+	github.com/brianvoe/gofakeit/v7 v7.2.1
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.10.0
 )

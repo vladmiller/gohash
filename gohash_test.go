@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"os"
 	"testing"
 	"time"
@@ -15,11 +16,50 @@ import (
 	"github.com/vladmiller/gohash"
 )
 
-func p[T any](i T) *T {
-	return &i
+var _ hash.Hash = (*testHasher)(nil)
+
+// testHasher partially implements [hash.Hash] interface and used to test the values
+// that are streamed to hasher.
+type testHasher struct {
+	result []byte
 }
 
+func newTestHasher() *testHasher {
+	return &testHasher{
+		result: make([]byte, 0),
+	}
+}
+
+// BlockSize implements hash.Hash.
+func (t *testHasher) BlockSize() int {
+	panic("unimplemented")
+}
+
+// Size implements hash.Hash.
+func (t *testHasher) Size() int {
+	panic("unimplemented")
+}
+
+// Reset implements hash.Hash.
+func (t *testHasher) Reset() {
+	panic("unimplemented")
+}
+
+// Sum implements hash.Hash.
+func (t *testHasher) Sum(b []byte) []byte {
+	return t.result
+}
+
+// Write implements hash.Hash.
+func (t *testHasher) Write(p []byte) (n int, err error) {
+	t.result = append(t.result, p...)
+	return len(p), nil
+}
+
+// ------------------------------------------------------------------------------------
+
 func TestFrom(t *testing.T) {
+	// Snapshot of all hashes is stored to ensure consistency over time when new versions are released.
 	snapshot := make([]string, len(testCases))
 	snapshotExists := false
 
@@ -34,7 +74,7 @@ func TestFrom(t *testing.T) {
 	// record hash to a snapshot.
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			hash, err := gohash.From(tc, sha256.New())
+			hash, err := gohash.From(tc, newTestHasher())
 			require.NoError(t, err)
 
 			if !snapshotExists {
@@ -46,7 +86,19 @@ func TestFrom(t *testing.T) {
 		})
 	}
 
+	// Run the entire test a few more times to ensure that hashes are always the same
+	for range 50 {
+		for i, tc := range testCases {
+			t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
+				hash, err := gohash.From(tc, newTestHasher())
+				require.NoError(t, err)
+				assert.Equal(t, snapshot[i], hex.EncodeToString(hash))
+			})
+		}
+	}
+
 	// If snapshot did not exist before, then write it as json
+
 	if !snapshotExists {
 		b, err := json.MarshalIndent(snapshot, "", "  ")
 		require.NoError(t, err)
@@ -55,6 +107,25 @@ func TestFrom(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Error("Snapshot has been created, run the test again.")
+	}
+}
+
+// TestContinuityOfMaps_Sample1 ensures that map input produces the same hash over 500 iterations.
+func TestContinuityOfMaps_Sample1(t *testing.T) {
+	// Given
+	input := map[interface{}]interface{}{
+		"foo":   "bar",
+		"bar":   0,
+		42:      "answer",
+		3.14:    "pi",
+		true:    "boolean",
+		"apple": 1,
+	}
+
+	hash, _ := gohash.From(input, sha256.New())
+	for i := range 500 {
+		hash1, _ := gohash.From(input, sha256.New())
+		require.Equal(t, hash, hash1, "Hash changed on iter %d, cannot sort a map champ?", i)
 	}
 }
 
@@ -113,6 +184,10 @@ func BenchmarkFrom(b *testing.B) {
 	}
 }
 
+func p[T any](i T) *T {
+	return &i
+}
+
 var nilInt *int
 var testCases = []any{
 	1, p(1), p(p(p(1))), 2.5, -4, -4324239493924,
@@ -150,7 +225,7 @@ var testCases = []any{
 		"5":    []any{1, 2, 3, 4, 5},
 	},
 
-	map[string]interface{}{
+	map[string]any{
 		"nested": map[string]interface{}{
 			"array": []int{1, 2, 3},
 			"ptr":   p("test"),

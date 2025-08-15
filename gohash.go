@@ -11,7 +11,7 @@ import (
 
 type Hash []byte
 
-// compareMapKeys compares two reflect.Values for sorting
+// compareMapKeys compares two reflect.Values for sorting.
 func compareMapKeys(a, b reflect.Value) int {
 	// First sort by type name for stability
 	aType := a.Type().String()
@@ -102,6 +102,10 @@ func walkObject(input any, hasher hash.Hash, depth int, visited map[uintptr]bool
 	if kind == reflect.Ptr || kind == reflect.Map ||
 		kind == reflect.Slice || kind == reflect.Interface {
 		if rv.IsNil() {
+			// Write type information for nil pointers to distinguish nil *int from nil *string
+			if kind == reflect.Ptr {
+				hasher.Write([]byte(rv.Type().String()))
+			}
 			return nil
 		}
 
@@ -150,18 +154,9 @@ func walkObject(input any, hasher hash.Hash, depth int, visited map[uintptr]bool
 
 	vt[0] = byte(kind)
 
-	// If input implements stringer interface, then use it directly
-	if rv.IsValid() {
-		if s, ok := rv.Interface().(fmt.Stringer); ok {
-			hasher.Write([]byte("stringer"))
-			hasher.Write([]byte(s.String()))
-			return nil
-		}
-	}
-
 	// Process value based on it's type
 	switch kind {
-		
+
 	// If we received a reflect.Invalid, then we're getting an empty pointer
 	case reflect.Invalid:
 		// We cannot infer type of nil, however, we need to treat nil and *nil as same values
